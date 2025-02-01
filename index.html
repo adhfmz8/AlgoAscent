@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>LeetCode Study App</title>
+  </head>
+  <body>
+    <h1>AlgoAscent</h1>
+    <p id="recommendation"></p>
+
+    <div id="reportForm">
+      <label for="timeTaken">Time Taken (minutes):</label>
+      <input type="number" id="timeTaken" name="timeTaken" step="0.1" required><br>
+
+      <label for="solved">Solved:</label>
+      <input type="checkbox" id="solved" name="solved"><br>
+
+      <button id="submitReportBtn">Submit Report</button>
+    </div>
+
+
+    <script>
+      let currentProblem = null;
+
+      function fetchRecommendation() {
+          fetch('http://localhost:8000/recommend')
+            .then(response => response.json())
+            .then(data => {
+            currentProblem = data;
+            const recommendationElement = document.getElementById('recommendation');
+            recommendationElement.innerHTML = `Try: <a href="${data.url}" id="leetcodeLink">${data.title}</a>`;
+
+                // Add the event listener to open the link using the electron api.
+                document.getElementById('leetcodeLink').addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const { shell } = require('electron');
+                    shell.openExternal(data.url);
+                })
+            })
+            .catch(err => console.error(err));
+      }
+
+    function clearReportForm() {
+          document.getElementById('timeTaken').value = '';
+          document.getElementById('solved').checked = false;
+    }
+
+    // Fetch a recommendation on load
+    fetchRecommendation()
+
+      // Send a sample report when the button is clicked
+      document.getElementById('submitReportBtn').addEventListener('click', () => {
+          const timeTaken = document.getElementById('timeTaken').value;
+          const solved = document.getElementById('solved').checked;
+
+          if (!currentProblem) {
+              alert("Cannot submit report. No problem has been loaded yet.");
+              return;
+          }
+
+          fetch('http://localhost:8000/report', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+              problem_id: currentProblem.id,
+              time_taken: parseFloat(timeTaken),
+              solved: solved
+          })
+          })
+          .then(response => response.json())
+          .then(data => {
+              console.log(data)
+              clearReportForm()
+              fetchRecommendation()
+          })
+          .catch(err => console.error(err));
+    });
+    </script>
+  </body>
+</html>

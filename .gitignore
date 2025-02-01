@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+.ruff_cache/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+
+# Database
+database.db
+
+# Dependency management
+node_modules/
+
+# Misc
+.DS_Store
+.env
+*.log
