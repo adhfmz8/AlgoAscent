@@ -1,17 +1,18 @@
 /* Global Styles */
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+      Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     margin: 20px;
-    color: #333; /* Dark gray for better readability */
+    color: #eee; /* Light gray text for dark mode */
     line-height: 1.6;
-    background-color: #f8f8f8; /* Light gray background */
+    background-color: #1a1a1a; /* Dark background color */
   }
   
   h1 {
     font-size: 2.5rem;
     font-weight: 700;
     margin-bottom: 1rem;
-    color: #1a1a1a; /* Near black for headings */
+    color: #fff; /* White headings */
   }
   
   p {
@@ -22,37 +23,40 @@ body {
   /* Layout */
   #reportForm {
     margin-top: 2rem;
-    background-color: #fff;
+    background-color: #2a2a2a; /* Darker gray form background */
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1); /* Light shadow for dark mode */
   }
   
   /* Form Elements */
   label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-      color: #333;
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #eee; /* Light text for labels */
   }
   
-  input[type="number"],
-  input[type="checkbox"]{
+  input[type="number"] {
     margin-bottom: 1rem;
     padding: 0.75rem;
-    border: 1px solid #ddd; /* Light gray border */
+    border: 1px solid #444; /* Darker border */
     border-radius: 4px;
     font-size: 1rem;
+    color: #eee; /* Text color */
+    background-color: #333; /* Darker input background */
     display: block;
   }
   
   input[type="checkbox"] {
-      display: inline-block; /* Ensure the checkbox is displayed as an inline-block element */
+    /* Display the checkbox */
+    display: inline-block;
       vertical-align: middle; /* Vertically align the checkbox with the label */
       margin-bottom: 1rem;
       margin-left: 0.5rem;
       padding: 0;
   }
+  
   
   button {
     background-color: #007bff; /* Blue button */
@@ -62,17 +66,19 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-size: 1rem;
-    transition: background-color 0.3s ease; /* Smooth transition */
+    transition: background-color 0.3s ease;
   }
   
   button:hover {
     background-color: #0056b3; /* Darker blue on hover */
   }
+  
   a {
       color: #007bff; /* Blue link */
       text-decoration: none; /* remove underline by default */
       font-weight: 500;
   }
+  
   a:hover {
       text-decoration: underline;
   }
