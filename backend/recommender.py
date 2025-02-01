@@ -21,6 +21,9 @@ CATEGORY_PRIORITY = [
     "Graph",
 ]
 
+DIFFICULTY_PRIORITY = ["Easy", "Medium", "Hard"]
+MASTERY_THRESHOLD = 3 # The number of easy problems that need to be solved before advancing to the medium level
+
 
 def recommend_ordered_problem() -> Problem:
     with Session(engine) as session:
@@ -71,21 +74,39 @@ def recommend_ordered_problem() -> Problem:
             else:
                 unattempted_problems.append(problem)
 
-        # Sort the reviewable problems by category priority
+        # Sort the reviewable problems by category priority and then difficulty.
         prioritized_problems = []
+        if reviewable_problems:
+             for category in CATEGORY_PRIORITY:
+                  review_problems_in_category = [
+                      problem
+                      for problem in reviewable_problems
+                      if problem.neetcode_category == category
+                    ]
+                  if review_problems_in_category:
+                     # Count solved easy problems in the category
+                    solved_easy_problems = len([
+                        attempt
+                        for attempt in all_attempts
+                        if attempt.problem_id in [p.id for p in review_problems_in_category if p.difficulty == "Easy"]
+                        and attempt.solved
+                         and attempt.problem_id
+                        not in completed_problem_ids
+                        ])
+                    for difficulty in DIFFICULTY_PRIORITY:
+                        if difficulty == "Easy":
+                           unattempted_problems_with_difficulty = [problem for problem in review_problems_in_category if problem.difficulty == difficulty]
+                           if unattempted_problems_with_difficulty:
+                             prioritized_problems.extend(unattempted_problems_with_difficulty)
+                        elif difficulty == "Medium" and solved_easy_problems >= MASTERY_THRESHOLD: # Only add medium problems if the user has passed the required threshold
+                            unattempted_problems_with_difficulty = [problem for problem in review_problems_in_category if problem.difficulty == difficulty]
+                            if unattempted_problems_with_difficulty:
+                             prioritized_problems.extend(unattempted_problems_with_difficulty)
+                        elif difficulty == "Hard" and solved_easy_problems >= MASTERY_THRESHOLD: # Only add hard problems if the user has passed the required threshold
+                             unattempted_problems_with_difficulty = [problem for problem in review_problems_in_category if problem.difficulty == difficulty]
+                             if unattempted_problems_with_difficulty:
+                                prioritized_problems.extend(unattempted_problems_with_difficulty)
 
-        if (
-            reviewable_problems
-        ):  # Check if reviewable problems has entries, if it does, prioritize those.
-            for category in CATEGORY_PRIORITY:
-                review_problems_in_category = [
-                    problem
-                    for problem in reviewable_problems
-                    if problem.neetcode_category == category
-                ]
-                if review_problems_in_category:
-                    prioritized_problems.extend(review_problems_in_category)
-            return random.choice(prioritized_problems)
 
         else:  # Otherwise, use the prioritized unattempted problems list, or a random choice
             for category in CATEGORY_PRIORITY:
@@ -95,7 +116,47 @@ def recommend_ordered_problem() -> Problem:
                     if problem.neetcode_category == category
                 ]
                 if unattempted_problems_in_category:
-                    prioritized_problems.extend(unattempted_problems_in_category)
+                     # Check if any attempt has been made in this category yet
+                    has_attempt = any(attempt for attempt in all_attempts if attempt.problem_id in [p.id for p in unattempted_problems_in_category])
+                    if not has_attempt:
+                          unattempted_problems_with_difficulty = [problem for problem in unattempted_problems_in_category if problem.difficulty == "Easy"] # Always pick an easy problem if no attempts in this category
+                          if unattempted_problems_with_difficulty:
+                            prioritized_problems.extend(unattempted_problems_with_difficulty)
+                            continue #Skip the rest of the logic for this category
+
+                    # Count solved easy problems in the category
+                    solved_easy_problems = len([
+                        attempt
+                        for attempt in all_attempts
+                        if attempt.problem_id in [p.id for p in unattempted_problems_in_category if p.difficulty == "Easy"]
+                        and attempt.solved
+                        ])
+
+                    for difficulty in DIFFICULTY_PRIORITY:
+                        if difficulty == "Easy":
+                            unattempted_problems_with_difficulty = [
+                                problem
+                                for problem in unattempted_problems_in_category
+                                if problem.difficulty == difficulty
+                            ]
+                            if unattempted_problems_with_difficulty:
+                                prioritized_problems.extend(unattempted_problems_with_difficulty)
+                        elif difficulty == "Medium" and solved_easy_problems >= MASTERY_THRESHOLD: # Only add medium problems if the user has passed the required threshold
+                            unattempted_problems_with_difficulty = [
+                                problem
+                                for problem in unattempted_problems_in_category
+                                if problem.difficulty == difficulty
+                            ]
+                            if unattempted_problems_with_difficulty:
+                              prioritized_problems.extend(unattempted_problems_with_difficulty)
+                        elif difficulty == "Hard" and solved_easy_problems >= MASTERY_THRESHOLD: # Only add hard problems if the user has passed the required threshold
+                            unattempted_problems_with_difficulty = [
+                            problem
+                                for problem in unattempted_problems_in_category
+                                if problem.difficulty == difficulty
+                            ]
+                            if unattempted_problems_with_difficulty:
+                             prioritized_problems.extend(unattempted_problems_with_difficulty)
             if prioritized_problems:
                 return random.choice(prioritized_problems)
             else:
