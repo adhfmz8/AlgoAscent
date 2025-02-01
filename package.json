@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "start": "concurrently \" uv run uvicorn backend.main:app --reload --port 8000\" \"electron .\"",
     "start-e": "electron ."
   },
   "keywords": [],
