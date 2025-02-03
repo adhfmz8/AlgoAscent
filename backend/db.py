@@ -1,6 +1,7 @@
 from sqlmodel import SQLModel, create_engine, Session, select
 from models import Problem, UserAttempt
 from typing import List
+from sqlalchemy import desc
 
 engine = create_engine("sqlite:///./database.db", echo=True)
 
@@ -34,6 +35,17 @@ def get_all_attempts():
         statement = select(UserAttempt)
         results = session.exec(statement)
         return results.all()
+
+
+def get_last_attempt(problem_id: int):
+    with Session(engine) as session:
+        statement = (
+            select(UserAttempt)
+            .where(UserAttempt.problem_id == problem_id)
+            .order_by(desc(UserAttempt.attempt_date))
+        )
+        result = session.exec(statement).first()
+        return result
 
 
 def seed_database():
