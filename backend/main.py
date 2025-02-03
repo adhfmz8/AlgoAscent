@@ -64,11 +64,11 @@ def calculate_new_easiness_factor(last_attempt: UserAttempt, solved: bool, time_
     easiness_factor = last_attempt.easiness_factor
     if solved:
          easiness_factor += 0.1
-         if time_taken < 5:
+         if time_taken < 30:
             easiness_factor += 0.1
     else:
         easiness_factor -= 0.2
-        if time_taken > 15:
+        if time_taken > 30:
             easiness_factor -= 0.2
     return max(1.3, easiness_factor) # don't let easiness factor go too low
 
