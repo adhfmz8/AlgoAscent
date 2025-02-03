@@ -1238,7 +1238,6 @@ def seed_database():
             neetcode_order=149,
             neetcode_category="Math",
         ),
-
     ]
     with Session(engine) as session:
         statement = select(Problem)
