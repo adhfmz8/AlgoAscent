@@ -4,7 +4,6 @@ from pydantic import BaseModel
 import db
 from models import Problem, UserAttempt
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
 from recommender import recommend_ordered_problem
 
 db.create_db_and_tables()

@@ -1,10 +1,9 @@
 # backend/recommender.py
 import random
 from models import Problem, UserAttempt
-from typing import List
 from sqlmodel import Session, create_engine, select
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 
 engine = create_engine("sqlite:///./database.db")
 
