@@ -3,7 +3,8 @@ import random
 from models import Problem, UserAttempt
 from sqlmodel import Session, create_engine, select
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
+
 
 engine = create_engine("sqlite:///./database.db")
 
@@ -265,3 +266,23 @@ def recommend_ordered_problem() -> Problem:
             else:
                 # Return random problem if nothing is found in those categories
                 return random.choice(all_problems)
+
+
+def calculate_new_easiness_factor(
+    last_attempt: UserAttempt, solved: bool, time_taken: float
+):
+    easiness_factor = last_attempt.easiness_factor
+    if solved:
+        easiness_factor += 0.1
+        if time_taken < 30:
+            easiness_factor += 0.1
+    else:
+        easiness_factor -= 0.2
+        if time_taken > 30:
+            easiness_factor -= 0.2
+    return max(1.3, easiness_factor)  # don't let easiness factor go too low
+
+
+def calculate_next_review_date(easiness_factor: float):
+    days_until_review = easiness_factor
+    return datetime.now() + timedelta(days=days_until_review)

@@ -4,7 +4,11 @@ from pydantic import BaseModel
 import db
 from models import Problem, UserAttempt
 from fastapi.middleware.cors import CORSMiddleware
-from recommender import recommend_ordered_problem
+from recommender import (
+    recommend_ordered_problem,
+    calculate_new_easiness_factor,
+    calculate_next_review_date,
+)
 from datetime import datetime, timedelta
 
 db.create_db_and_tables()
@@ -50,28 +54,13 @@ async def report(data: Report):
     # Fetch the last attempt to update easiness
     last_attempt = db.get_last_attempt(attempt.problem_id)
     if last_attempt:
-        attempt.easiness_factor = calculate_new_easiness_factor(last_attempt, attempt.solved, attempt.time_taken)
+        attempt.easiness_factor = calculate_new_easiness_factor(
+            last_attempt, attempt.solved, attempt.time_taken
+        )
     else:
-        attempt.easiness_factor = 2.5 # default easiness factor
+        attempt.easiness_factor = 2.5  # default easiness factor
 
     attempt.next_review_date = calculate_next_review_date(attempt.easiness_factor)
 
     db.create_attempt(attempt)
     return {"message": "Report received"}
-
-
-def calculate_new_easiness_factor(last_attempt: UserAttempt, solved: bool, time_taken: float):
-    easiness_factor = last_attempt.easiness_factor
-    if solved:
-         easiness_factor += 0.1
-         if time_taken < 30:
-            easiness_factor += 0.1
-    else:
-        easiness_factor -= 0.2
-        if time_taken > 30:
-            easiness_factor -= 0.2
-    return max(1.3, easiness_factor) # don't let easiness factor go too low
-
-def calculate_next_review_date(easiness_factor: float):
-    days_until_review =  easiness_factor
-    return datetime.now() + timedelta(days=days_until_review)
