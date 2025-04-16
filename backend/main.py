@@ -1,15 +1,10 @@
-# /Users/nathandiamond/Documents/GitHub/AlgoAscent/backend/main.py
 from fastapi import FastAPI
 from pydantic import BaseModel
 import db
 from models import Problem, UserAttempt
 from fastapi.middleware.cors import CORSMiddleware
-from recommender import (
-    recommend_ordered_problem,
-    calculate_new_easiness_factor,
-    calculate_next_review_date,
-)
-from datetime import datetime, timedelta
+from recommender import recommend_ordered_problem, update_sm2, estimate_quality
+from datetime import datetime
 
 db.create_db_and_tables()
 db.seed_database()
@@ -17,9 +12,9 @@ db.seed_database()
 app = FastAPI()
 
 origins = [
-    "http://localhost:8000",  # the origin where the server is running
-    "http://localhost",  # localhost in general
-    "null",  # electron sends the origin as null by default
+    "http://localhost:8000",
+    "http://localhost",
+    "null",
 ]
 
 app.add_middleware(
@@ -39,28 +34,25 @@ class Report(BaseModel):
 
 @app.get("/recommend", response_model=Problem)
 async def recommend():
-    # A placeholder recommendation algorithm: pick a random problem
-    problem = recommend_ordered_problem()
-    return problem
+    return recommend_ordered_problem()
 
 
 @app.post("/report")
 async def report(data: Report):
-    # Here you would process the data (e.g., update user stats, adjust recommendation parameters)
-    # For now, just log the data and return a simple acknowledgement.
     print("Report received:", data)
+
+    # 1. Save the raw attempt
     attempt = UserAttempt(**data.model_dump())
-
-    # Fetch the last attempt to update easiness
-    last_attempt = db.get_last_attempt(attempt.problem_id)
-    if last_attempt:
-        attempt.easiness_factor = calculate_new_easiness_factor(
-            last_attempt, attempt.solved, attempt.time_taken
-        )
-    else:
-        attempt.easiness_factor = 2.5  # default easiness factor
-
-    attempt.next_review_date = calculate_next_review_date(attempt.easiness_factor)
-
     db.create_attempt(attempt)
-    return {"message": "Report received"}
+
+    # 2. Update or create ProblemMemory using SM-2
+    memory = db.get_or_create_problem_memory(data.problem_id)
+
+    # Estimate recall quality from result
+    quality = estimate_quality(data.solved, data.time_taken)
+
+    # Update spaced repetition schedule
+    updated_memory = update_sm2(memory, quality)
+    db.update_problem_memory(updated_memory)
+
+    return {"message": "Report processed using SM-2"}

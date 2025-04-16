@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, create_engine, Session, select
-from models import Problem, UserAttempt
-from typing import List
+from models import Problem, UserAttempt, ProblemMemory  # ⬅️ added ProblemMemory
+from typing import List, Optional
 from sqlalchemy import desc
 
 engine = create_engine("sqlite:///./database.db", echo=True)
@@ -37,15 +37,36 @@ def get_all_attempts():
         return results.all()
 
 
-def get_last_attempt(problem_id: int):
+def get_last_attempt(problem_id: int) -> Optional[UserAttempt]:
     with Session(engine) as session:
         statement = (
             select(UserAttempt)
             .where(UserAttempt.problem_id == problem_id)
             .order_by(desc(UserAttempt.attempt_date))
         )
-        result = session.exec(statement).first()
-        return result
+        return session.exec(statement).first()
+
+
+# ⬇️ NEW FUNCTION: Get or create ProblemMemory
+def get_or_create_problem_memory(problem_id: int) -> ProblemMemory:
+    with Session(engine) as session:
+        statement = select(ProblemMemory).where(ProblemMemory.problem_id == problem_id)
+        memory = session.exec(statement).first()
+
+        if not memory:
+            memory = ProblemMemory(problem_id=problem_id)
+            session.add(memory)
+            session.commit()
+            session.refresh(memory)
+
+        return memory
+
+
+# ⬇️ NEW FUNCTION: Update ProblemMemory (after SM-2 scheduling)
+def update_problem_memory(memory: ProblemMemory):
+    with Session(engine) as session:
+        session.add(memory)
+        session.commit()
 
 
 def seed_database():

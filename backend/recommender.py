@@ -1,6 +1,6 @@
 # backend/recommender.py
 import random
-from models import Problem, UserAttempt
+from models import Problem, UserAttempt, ProblemMemory
 from sqlmodel import Session, create_engine, select
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -286,3 +286,44 @@ def calculate_new_easiness_factor(
 def calculate_next_review_date(easiness_factor: float):
     days_until_review = easiness_factor
     return datetime.now() + timedelta(days=days_until_review)
+
+
+def update_sm2(memory: ProblemMemory, quality: int) -> ProblemMemory:
+    """
+    Update ProblemMemory using SM-2 algorithm.
+    quality: int from 0 (complete blackout) to 5 (perfect recall)
+    """
+
+    ef = memory.easiness_factor
+    r = memory.repetitions
+
+    # SM-2 easiness factor update formula
+    ef = ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
+    ef = max(1.3, ef)  # minimum EF is 1.3
+
+    if quality < 3:
+        # Reset review schedule if recall was poor
+        r = 0
+        interval_days = 1
+    else:
+        r += 1
+        if r == 1:
+            interval_days = 1
+        elif r == 2:
+            interval_days = 6
+        else:
+            interval_days = round((r - 1) * ef)
+
+    memory.easiness_factor = ef
+    memory.repetitions = r
+    memory.last_attempt_date = datetime.now()
+    memory.next_review_date = datetime.now() + timedelta(days=interval_days)
+
+    return memory
+
+
+def estimate_quality(solved: bool, time_taken: float) -> int:
+    if not solved:
+        return 2 if time_taken < 30 else 1
+    else:
+        return 5 if time_taken < 20 else 4

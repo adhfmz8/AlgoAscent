@@ -28,3 +28,12 @@ class UserAttempt(SQLModel, table=True):
     next_review_date: Optional[datetime] = Field(
         default=datetime.now()
     )  # Default next review date
+
+
+class ProblemMemory(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    problem_id: int = Field(foreign_key="problem.id", unique=True)
+    repetitions: int = Field(default=0)
+    easiness_factor: float = Field(default=2.5)
+    next_review_date: datetime = Field(default_factory=datetime.now)
+    last_attempt_date: Optional[datetime] = None
