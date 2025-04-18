@@ -289,20 +289,15 @@ def calculate_next_review_date(easiness_factor: float):
 
 
 def update_sm2(memory: ProblemMemory, quality: int) -> ProblemMemory:
-    """
-    Update ProblemMemory using SM-2 algorithm.
-    quality: int from 0 (complete blackout) to 5 (perfect recall)
-    """
-
     ef = memory.easiness_factor
     r = memory.repetitions
+    last_interval = memory.last_interval
 
-    # SM-2 easiness factor update formula
-    ef = ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
-    ef = max(1.3, ef)  # minimum EF is 1.3
+    # SM-2 easiness factor update
+    ef += (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
+    ef = max(1.3, ef)
 
     if quality < 3:
-        # Reset review schedule if recall was poor
         r = 0
         interval_days = 1
     else:
@@ -312,12 +307,13 @@ def update_sm2(memory: ProblemMemory, quality: int) -> ProblemMemory:
         elif r == 2:
             interval_days = 6
         else:
-            interval_days = round((r - 1) * ef)
+            interval_days = last_interval * ef
 
     memory.easiness_factor = ef
     memory.repetitions = r
+    memory.last_interval = interval_days
     memory.last_attempt_date = datetime.now()
-    memory.next_review_date = datetime.now() + timedelta(days=interval_days)
+    memory.next_review_date = memory.last_attempt_date + timedelta(days=round(interval_days))
 
     return memory
 
