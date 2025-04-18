@@ -81,6 +81,9 @@ def recommend_ordered_problem() -> Problem:
                     reviewable_problems.append(problem)
             else:
                 unattempted_problems.append(problem)
+        
+        if reviewable_problems:
+            return random.choice(reviewable_problems)
 
         # Sort the reviewable problems by category priority and then difficulty.
         prioritized_problems = []
