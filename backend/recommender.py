@@ -35,240 +35,126 @@ MASTERY_THRESHOLD = 3
 
 def recommend_ordered_problem() -> Problem:
     with Session(engine) as session:
-        statement = select(Problem)
-        results = session.exec(statement)
-        all_problems = results.all()
-
-        statement = select(UserAttempt)
-        results = session.exec(statement)
-        all_attempts = results.all()
-
-        completed_problem_ids = set(
-            attempt.problem_id for attempt in all_attempts if attempt.solved
-        )
-
-        category_counts = defaultdict(int)
-
-        for problem in all_problems:
-            if problem.id not in completed_problem_ids:
-                category_counts[problem.neetcode_category] += 1
-
-        # Get the current date
         now = datetime.now()
 
-        reviewable_problems = []
-        unattempted_problems = []
-        # Iterate through all problems and sort them into their proper place.
-        for problem in all_problems:
-            if (
-                problem.id in completed_problem_ids
-            ):  # Skip if problem is already completed
-                continue
+        # --- 1. Load Data ---
+        problems = session.exec(select(Problem)).all()
+        attempts = session.exec(select(UserAttempt)).all()
+        memories = session.exec(select(ProblemMemory)).all()
 
-            # Find the users attempt
-            user_attempt = next(
-                (
-                    attempt
-                    for attempt in all_attempts
-                    if attempt.problem_id == problem.id
-                ),
-                None,
-            )
+        problem_map = {p.id: p for p in problems} # Map ID to problem for quick lookup
+        completed_ids = {a.problem_id for a in attempts if a.solved}
+        memory_by_id = {m.problem_id: m for m in memories}
 
-            # If the problem has already been attempted, add it to the reviewable list if it is needed
-            if user_attempt:
-                if user_attempt.next_review_date <= now:
-                    reviewable_problems.append(problem)
+        # --- 2. Priority 1: Problems Needing Review ---
+        review_problem_ids = {
+            p.id
+            for p in problems
+            if p.id in memory_by_id and memory_by_id[p.id].next_review_date <= now
+        }
+        if review_problem_ids:
+            review_problems = [p for p in problems if p.id in review_problem_ids]
+            # Optional: Prioritize reviews by earliest date? For now, random.
+            print(f"Recommending review problem from {len(review_problems)} due.")
+            return random.choice(review_problems)
+
+        # --- 3. Calculate Mastery Per Category ---
+        solved_easy_counts_per_category = defaultdict(int)
+        for attempt in attempts:
+            if attempt.solved:
+                problem = problem_map.get(attempt.problem_id)
+                if problem and problem.difficulty == "Easy":
+                    solved_easy_counts_per_category[problem.neetcode_category] += 1
+
+        # --- 4. Find Available Problems (Not Completed, Not Review) ---
+        available_problems = [
+            p for p in problems
+            if p.id not in completed_ids and p.id not in review_problem_ids
+        ]
+
+        # --- 5. Linear Progression Logic ---
+        print("Starting linear progression check...")
+        for idx, category in enumerate(CATEGORY_PRIORITY):
+            print(f"Checking Category: {category} (Index: {idx})")
+
+            # Check eligibility based on the *previous* category's mastery
+            if idx > 0:
+                previous_category = CATEGORY_PRIORITY[idx - 1]
+                mastery_in_previous = solved_easy_counts_per_category[previous_category]
+                if mastery_in_previous < MASTERY_THRESHOLD:
+                    print(f"  Mastery threshold ({MASTERY_THRESHOLD}) not met in previous category '{previous_category}' ({mastery_in_previous} solved). Stopping progression.")
+                    # User is stuck on the *previous* category until mastery.
+                    # Find an *easy* problem in the *previous* category if available.
+                    stuck_category_problems = [
+                        p for p in available_problems
+                        if p.neetcode_category == previous_category and p.difficulty == "Easy"
+                    ]
+                    if stuck_category_problems:
+                         print(f"  Recommending another Easy problem from '{previous_category}' to meet threshold.")
+                         return random.choice(stuck_category_problems)
+                    else:
+                         # No more easy problems in the category they are stuck on.
+                         # What to do? Fallback for now. Maybe offer medium? Or just go to general fallback.
+                         print(f"  No more Easy problems found in '{previous_category}'. Breaking to fallback.")
+                         break # Go to fallback logic
+
+            # --- If eligible for this category ---
+            print(f"  Eligible for category: {category}")
+            category_problems = [
+                p for p in available_problems if p.neetcode_category == category
+            ]
+
+            if not category_problems:
+                print(f"  No available problems found for {category}. Continuing to next.")
+                continue # Move to the next category
+
+            # Prioritize Easy problems first
+            easy_problems = [p for p in category_problems if p.difficulty == "Easy"]
+            if easy_problems:
+                print(f"  Recommending Easy problem from {category}.")
+                return random.choice(easy_problems)
+
+            # If no Easy problems left, check if ready for Medium/Hard in *this* category
+            mastery_in_current = solved_easy_counts_per_category[category]
+            total_easy_in_category = len([p for p in problems if p.neetcode_category == category and p.difficulty == "Easy"]) # Need total count here
+
+            # Allow Medium/Hard if threshold met OR all easy problems in this category are solved
+            if mastery_in_current >= MASTERY_THRESHOLD or mastery_in_current == total_easy_in_category :
+                print(f"  Easy mastery met/completed for {category}. Checking Medium/Hard.")
+                medium_problems = [p for p in category_problems if p.difficulty == "Medium"]
+                if medium_problems:
+                    print(f"  Recommending Medium problem from {category}.")
+                    return random.choice(medium_problems)
+
+                hard_problems = [p for p in category_problems if p.difficulty == "Hard"]
+                if hard_problems:
+                    print(f"  Recommending Hard problem from {category}.")
+                    return random.choice(hard_problems)
             else:
-                unattempted_problems.append(problem)
-        
-        if reviewable_problems:
-            return random.choice(reviewable_problems)
+                 print(f"  Easy mastery ({mastery_in_current}/{MASTERY_THRESHOLD}) not yet met for {category}. Cannot recommend Medium/Hard. Must solve Easy first.")
+                 # Since easy_problems was empty, and mastery isn't met for Med/Hard,
+                 # this implies user should continue with easy problems but there are none available *in this category*.
+                 # The loop will continue to the next category check (which might fail on eligibility).
 
-        # Sort the reviewable problems by category priority and then difficulty.
-        prioritized_problems = []
-        if reviewable_problems:
-            for category in CATEGORY_PRIORITY:
-                review_problems_in_category = [
-                    problem
-                    for problem in reviewable_problems
-                    if problem.neetcode_category == category
-                ]
-                if review_problems_in_category:
-                    # Count solved easy problems in the category
-                    solved_easy_problems = len(
-                        [
-                            attempt
-                            for attempt in all_attempts
-                            if attempt.problem_id
-                            in [
-                                p.id
-                                for p in review_problems_in_category
-                                if p.difficulty == "Easy"
-                            ]
-                            and attempt.solved
-                            and attempt.problem_id not in completed_problem_ids
-                        ]
-                    )
-                    for difficulty in DIFFICULTY_PRIORITY:
-                        if difficulty == "Easy":
-                            unattempted_problems_with_difficulty = [
-                                problem
-                                for problem in review_problems_in_category
-                                if problem.difficulty == difficulty
-                            ]
-                            if unattempted_problems_with_difficulty:
-                                prioritized_problems.extend(
-                                    unattempted_problems_with_difficulty
-                                )
-                        elif (
-                            difficulty == "Medium"
-                            and (
-                                solved_easy_problems >= MASTERY_THRESHOLD
-                                or solved_easy_problems
-                                == len(
-                                    [
-                                        p
-                                        for p in review_problems_in_category
-                                        if p.difficulty == "Easy"
-                                    ]
-                                )
-                            )
-                        ):  # Only add medium problems if the user has passed the required threshold, OR there are no more easy problems left
-                            unattempted_problems_with_difficulty = [
-                                problem
-                                for problem in review_problems_in_category
-                                if problem.difficulty == difficulty
-                            ]
-                            if unattempted_problems_with_difficulty:
-                                prioritized_problems.extend(
-                                    unattempted_problems_with_difficulty
-                                )
-                        elif (
-                            difficulty == "Hard"
-                            and (
-                                solved_easy_problems >= MASTERY_THRESHOLD
-                                or solved_easy_problems
-                                == len(
-                                    [
-                                        p
-                                        for p in review_problems_in_category
-                                        if p.difficulty == "Easy"
-                                    ]
-                                )
-                            )
-                        ):  # Only add hard problems if the user has passed the required threshold, OR there are no more easy problems left
-                            unattempted_problems_with_difficulty = [
-                                problem
-                                for problem in review_problems_in_category
-                                if problem.difficulty == difficulty
-                            ]
-                            if unattempted_problems_with_difficulty:
-                                prioritized_problems.extend(
-                                    unattempted_problems_with_difficulty
-                                )
 
-        if prioritized_problems:
-            return random.choice(prioritized_problems)
+        # --- 6. Fallback Logic ---
+        print("Linear progression finished or blocked. Using fallback.")
+        if available_problems:
+            # Fallback 1: Recommend any available (uncompleted, non-review) problem
+            print(f"Fallback: Recommending a random available problem from {len(available_problems)} options.")
+            return random.choice(available_problems)
+        elif problems:
+             # Fallback 2: All problems are either completed or need review.
+             # If review queue wasn't empty, we'd have returned earlier.
+             # This means all problems are completed, or something is wrong.
+             # Let's just return a random problem overall as a last resort.
+             print("Fallback: No available problems. Recommending a random problem overall.")
+             return random.choice(problems)
+        else:
+            # Fallback 3: No problems in DB?
+            raise ValueError("No problems found in the database.")
 
-        else:  # Otherwise, use the prioritized unattempted problems list, or a random choice
-            for category in CATEGORY_PRIORITY:
-                unattempted_problems_in_category = [
-                    problem
-                    for problem in unattempted_problems
-                    if problem.neetcode_category == category
-                ]
-                if unattempted_problems_in_category:
-                    # Check if any attempt has been made in this category yet
-                    # Check if any attempt has been made in this category yet
-                    has_attempt = any(
-                        attempt
-                        for attempt in all_attempts
-                        if attempt.problem_id
-                        in [p.id for p in unattempted_problems_in_category]
-                    )
-                    if not has_attempt:
-                        unattempted_problems_with_difficulty = [
-                            problem
-                            for problem in unattempted_problems_in_category
-                            if problem.difficulty == "Easy"
-                        ]  # Always pick an easy problem if no attempts in this category
-                        if unattempted_problems_with_difficulty:
-                            prioritized_problems.extend(
-                                unattempted_problems_with_difficulty
-                            )
-                            break  # Skip the rest of the logic for this category, and go to next category
 
-                    # Count solved easy problems in the category
-                    solved_easy_problems = len(
-                        [
-                            attempt
-                            for attempt in all_attempts
-                            if attempt.problem_id
-                            in [
-                                p.id
-                                for p in unattempted_problems_in_category
-                                if p.difficulty == "Easy"
-                            ]
-                            and attempt.solved
-                        ]
-                    )
-                    easy_problems_in_category = len(
-                        [
-                            p
-                            for p in unattempted_problems_in_category
-                            if p.difficulty == "Easy"
-                        ]
-                    )
-                    for difficulty in DIFFICULTY_PRIORITY:
-                        if difficulty == "Easy":
-                            unattempted_problems_with_difficulty = [
-                                problem
-                                for problem in unattempted_problems_in_category
-                                if problem.difficulty == difficulty
-                            ]
-                            if unattempted_problems_with_difficulty:
-                                prioritized_problems.extend(
-                                    unattempted_problems_with_difficulty
-                                )
-                        elif (
-                            difficulty == "Medium"
-                            and (
-                                solved_easy_problems >= MASTERY_THRESHOLD
-                                or solved_easy_problems == easy_problems_in_category
-                            )
-                        ):  # Only add medium problems if the user has passed the required threshold or if the problems are exhausted.
-                            unattempted_problems_with_difficulty = [
-                                problem
-                                for problem in unattempted_problems_in_category
-                                if problem.difficulty == difficulty
-                            ]
-                            if unattempted_problems_with_difficulty:
-                                prioritized_problems.extend(
-                                    unattempted_problems_with_difficulty
-                                )
-                        elif (
-                            difficulty == "Hard"
-                            and (
-                                solved_easy_problems >= MASTERY_THRESHOLD
-                                or solved_easy_problems == easy_problems_in_category
-                            )
-                        ):  # Only add hard problems if the user has passed the required threshold or if the problems are exhausted.
-                            unattempted_problems_with_difficulty = [
-                                problem
-                                for problem in unattempted_problems_in_category
-                                if problem.difficulty == difficulty
-                            ]
-                            if unattempted_problems_with_difficulty:
-                                prioritized_problems.extend(
-                                    unattempted_problems_with_difficulty
-                                )
-
-            if prioritized_problems:
-                return random.choice(prioritized_problems)
-            else:
-                # Return random problem if nothing is found in those categories
-                return random.choice(all_problems)
 
 
 def calculate_new_easiness_factor(
@@ -297,7 +183,7 @@ def update_sm2(memory: ProblemMemory, quality: int) -> ProblemMemory:
     last_interval = memory.last_interval
 
     # SM-2 easiness factor update
-    ef += (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
+    ef += 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)
     ef = max(1.3, ef)
 
     if quality < 3:
@@ -316,7 +202,9 @@ def update_sm2(memory: ProblemMemory, quality: int) -> ProblemMemory:
     memory.repetitions = r
     memory.last_interval = interval_days
     memory.last_attempt_date = datetime.now()
-    memory.next_review_date = memory.last_attempt_date + timedelta(days=round(interval_days))
+    memory.next_review_date = memory.last_attempt_date + timedelta(
+        days=round(interval_days)
+    )
 
     return memory
 
