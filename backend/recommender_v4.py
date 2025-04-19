@@ -48,7 +48,7 @@ def recommend_ordered_problem() -> Problem:
 
         problem_map = {p.id: p for p in problems}
         completed_ids = {a.problem_id for a in attempts if a.solved}
-        memory_by_id = {m.proble_id: m for m in memory}
+        memory_by_id = {m.problem_id: m for m in memory}
 
         # Prioritize problems that need review
         review_problem_ids = {
