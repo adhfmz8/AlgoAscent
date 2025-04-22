@@ -3,7 +3,8 @@ from pydantic import BaseModel
 import db
 from models import Problem, UserAttempt
 from fastapi.middleware.cors import CORSMiddleware
-from recommender import recommend_ordered_problem, update_sm2, estimate_quality
+# from recommender import recommend_ordered_problem, update_sm2, estimate_quality
+from recommender_v5 import recommend_ordered_problem, process_attempt
 from datetime import datetime
 
 db.create_db_and_tables()
@@ -48,11 +49,7 @@ async def report(data: Report):
     # 2. Update or create ProblemMemory using SM-2
     memory = db.get_or_create_problem_memory(data.problem_id)
 
-    # Estimate recall quality from result
-    quality = estimate_quality(data.solved, data.time_taken)
-
-    # Update spaced repetition schedule
-    updated_memory = update_sm2(memory, quality)
-    db.update_problem_memory(updated_memory)
+    # 3. Update the ProblemMemory with the new attempt
+    process_attempt(data.problem_id, data.solved, data.time_taken)
 
     return {"message": "Report processed using SM-2"}
