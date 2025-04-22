@@ -30,12 +30,70 @@ NUM_SIMULATION_STEPS = 200 # How many problems the agent attempts
 AGENT_LEARNING_RATE = 0.05 # How much skill increases on success
 # AGENT_INITIAL_SKILL = 0.1 # Replaced by profiles
 
-# --- Agent Profiles ---
+# --- Agent Profiles with per-category skill levels ---
 AGENT_PROFILES = {
-    "Beginner": 0.1,
-    "Moderate": 0.35,
-    "Expert": 0.6,
+    "Freshman": {
+        "Arrays and Hashing": 0.1,
+        "Two Pointers": 0.05,
+        "Stack": 0.05,
+        "Sliding Window": 0.0,
+        "Binary Search": 0.05,
+        "Linked List": 0.0,
+        "Tree": 0.0,
+        "Tries": 0.0,
+        "Heap / Priority Queue": 0.0,
+        "Backtracking": 0.0,
+        "Intervals": 0.0,
+        "Greedy": 0.0,
+        "Graph": 0.0,
+        "Graph2": 0.0,
+        "1DDP": 0.0,
+        "2DDP": 0.0,
+        "Bit Manipulation": 0.0,
+        "Math": 0.1,
+    },
+    "Sophomore": {
+        "Arrays and Hashing": 0.4,
+        "Two Pointers": 0.4,
+        "Stack": 0.4,
+        "Sliding Window": 0.35,
+        "Binary Search": 0.4,
+        "Linked List": 0.3,
+        "Tree": 0.25,
+        "Tries": 0.2,
+        "Heap / Priority Queue": 0.2,
+        "Backtracking": 0.25,
+        "Intervals": 0.3,
+        "Greedy": 0.3,
+        "Graph": 0.2,
+        "Graph2": 0.2,
+        "1DDP": 0.15,
+        "2DDP": 0.1,
+        "Bit Manipulation": 0.2,
+        "Math": 0.3,
+    },
+    "Senior": {
+        "Arrays and Hashing": 0.7,
+        "Two Pointers": 0.7,
+        "Stack": 0.65,
+        "Sliding Window": 0.65,
+        "Binary Search": 0.7,
+        "Linked List": 0.6,
+        "Tree": 0.6,
+        "Tries": 0.55,
+        "Heap / Priority Queue": 0.55,
+        "Backtracking": 0.6,
+        "Intervals": 0.6,
+        "Greedy": 0.6,
+        "Graph": 0.5,
+        "Graph2": 0.5,
+        "1DDP": 0.4,
+        "2DDP": 0.35,
+        "Bit Manipulation": 0.5,
+        "Math": 0.6,
+    }
 }
+
 
 # Map difficulty strings to numerical values for comparison with skill
 DIFFICULTY_VALUES = {
@@ -119,10 +177,10 @@ class Agent:
         if profile_name not in AGENT_PROFILES:
             raise ValueError(f"Unknown agent profile: {profile_name}. Valid profiles: {list(AGENT_PROFILES.keys())}")
 
-        initial_skill = AGENT_PROFILES[profile_name]
+        profile_skill = AGENT_PROFILES[profile_name]
         # Simple knowledge: skill level (0.0 to 1.0) per category
         self.skills: Dict[str, float] = {
-            category: initial_skill for category in AGENT_CATEGORIES
+            category: profile_skill.get(category, 0.0) for category in AGENT_CATEGORIES
         }
         self.learning_rate = learning_rate
         self.problems_solved = 0
