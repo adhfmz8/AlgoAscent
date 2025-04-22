@@ -8,38 +8,46 @@ import math
 
 engine = create_engine("sqlite:///./database.db")
 
-CATEGORY_PRIORITY = [
-    "Arrays and Hashing",
-    "Two Pointers",
-    "Stack",
-    "Sliding Window",
-    "Binary Search",
-    "Linked List",
-    "Tree",
-    "Tries",
-    "Heap / Priority Queue",
-    "Backtracking",
-    "Intervals",
-    "Greedy",
-    "Graph",
-    "Graph2",
-    "1DDP",
-    "2DDP",
-    "Bit Manipulation",
-    "Math",
-]
+"""
+Legend for Master:
+    3 = Relavtively straightforward
+    4 = Moderate complexity
+    5 = More complex
+    6 = Advanced
+    7 = Very advanced
+"""
+CATEGORY_PRIORITY = {
+    "Arrays and Hashing": 3,
+    "Two Pointers": 3,
+    "Stack": 4,
+    "Sliding Window": 4,
+    "Binary Search": 4,
+    "Linked List": 4,
+    "Tree": 5,
+    "Tries": 5,
+    "Heap / Priority Queue": 5,
+    "Backtracking": 6,
+    "Intervals": 4,
+    "Greedy": 5,
+    "Graph": 6,
+    "Graph2": 6,
+    "1DDP": 6,
+    "2DDP": 7,
+    "Bit Manipulation": 5,
+    "Math": 4,
+}
 
 DIFFICULTY_PRIORITY = ["Easy", "Medium", "Hard"]
-MASTERY_THRESHOLD = 3
+MASTERY_THRESHOLD = 3 # Used as a backup if the category is not in the priority list
 
 INTERLEAVING_FACTOR = 0.3 # Start with low interleaving
 INTERLEAVING_INCREASE_RATE = 0.01 # How quickly to increase interleaving factor
 EPSILON = 0.2 # Exploration rate
 
 # Global cache for category rewards
-category_rewards = {category: 1.0 for category in CATEGORY_PRIORITY}
+category_rewards = {category: 1.0 for category in list(CATEGORY_PRIORITY.keys())}
 # Global cache for category attempts
-category_attempts = {category: 0 for category in CATEGORY_PRIORITY}
+category_attempts = {category: 0 for category in list(CATEGORY_PRIORITY.keys())}
 # Total attempts
 total_attempts = 0
 
@@ -69,7 +77,7 @@ def epsilon_greedy(unlocked_categories: List[str]) -> List[str]:
     # Fallback
     if not unlocked_categories:
         print('No unlocked categories, using first category from priority list')
-        return [CATEGORY_PRIORITY[0]]
+        return [list(CATEGORY_PRIORITY.keys())[0]]
     
     # Make sure we have a valid number to select
     num_to_select = min(3, len(unlocked_categories))
@@ -103,7 +111,7 @@ def interleaving(categories: List[str], sm2_due_categories: List[str]) -> str:
     # Fallback, if no categories are available
     if not combined_categories:
         print('No categories to select from')
-        return CATEGORY_PRIORITY[0]
+        return list(CATEGORY_PRIORITY.keys())[0]
     
     weights = []
 
@@ -196,20 +204,23 @@ def get_unlocked_categories(session: Session) -> List[str]:
     unlocked_categories = []
 
     # First and second categories are always unlocked
-    if CATEGORY_PRIORITY:
-        unlocked_categories.append(CATEGORY_PRIORITY[0])
-        unlocked_categories.append(CATEGORY_PRIORITY[1])
+    category_keys = list(CATEGORY_PRIORITY.keys())
+    if category_keys:
+        unlocked_categories.append(category_keys[0])
+        unlocked_categories.append(category_keys[1])
 
     # Check the remaining categories
-    for i in range(2, len(CATEGORY_PRIORITY)):
-        prev_category = CATEGORY_PRIORITY[i-1]
-        current_category = CATEGORY_PRIORITY[i]
+    for i in range(2, len(category_keys)):
+        prev_category = category_keys[i-1]
+        current_category = category_keys[i]
 
         prev_easy_solved = solved_counts[prev_category]["Easy"]
         prev_easy_total = total_counts[prev_category]["Easy"]
 
+        category_threshold = CATEGORY_PRIORITY.get(prev_category, MASTERY_THRESHOLD)
+
         # Unlock if we'eve solved enough easy problems or all the easy problems
-        if (prev_easy_solved >= MASTERY_THRESHOLD or
+        if (prev_easy_solved >= category_threshold or
             (prev_easy_total > 0 and prev_easy_solved == prev_easy_total)):
             unlocked_categories.append(current_category)
         else:
@@ -348,7 +359,7 @@ def process_attempt(problem_id: int, solved: bool, time_taken: float) -> None:
         if category in category_rewards:
             category_rewards[category] = (1 - learning_rate) * category_rewards[category] + learning_rate * reward
         else:
-            category_rewards = reward
+            category_rewards[category] = reward
         
         # Update attempt counts
         category_attempts[category] = category_attempts.get(category, 0) + 1
@@ -374,7 +385,7 @@ def update_sm2(memory: ProblemMemory, quality: int) -> ProblemMemory:
         repetitions = 0
         interval_delays = 1
     else:
-        repititions += 1
+        repetitions += 1
         if repetitions == 1:
             interval_delays = 1
         elif repetitions == 2:
