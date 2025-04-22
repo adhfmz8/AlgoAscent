@@ -1,6 +1,6 @@
 import random
 from models import Problem, UserAttempt, ProblemMemory
-from typing import List
+from typing import List, Optional
 from sqlmodel import Session, create_engine, select
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -156,32 +156,36 @@ def interleaving(categories: List[str], sm2_due_categories: List[str]) -> str:
     return selected_category
 
 # Return problem from chosen category, prioritizing SM-2 due problems (Nathan)
-def sm_2(category: str, session: Session) -> List[Problem]:
+def sm_2(category: str, session: Session) -> Optional[Problem]: # Added Optional type hint
     due_problems = get_due_problems(category, session)
 
     if due_problems:
         problem = random.choice(due_problems)
         print(f'Selected SM-2 due problem: {problem.title} (ID: {problem.id})')
         return problem
-    
-    # If no problem is ude, get unsolved problems
+
+    # If no problem is due, get unsolved problems
     unsolved_problems = get_unsolved_problems(category, session)
 
+    # Initialize problems_by_difficulty *before* checking unsolved_problems
+    problems_by_difficulty = defaultdict(list)
+
     if unsolved_problems:
-        problems_by_difficulty = defaultdict(list)
+        # Populate the dictionary if there are problems
         for problem in unsolved_problems:
             problems_by_difficulty[problem.difficulty].append(problem)
-    
-    # Return a problem of appropriate difficulty
+
+    # Now this loop is safe, problems_by_difficulty always exists
+    # If it's empty, the inner 'if' condition will just be false
     for difficulty in DIFFICULTY_PRIORITY:
         if problems_by_difficulty[difficulty]:
             problem = random.choice(problems_by_difficulty[difficulty])
             print(f'Selected unsolved problem: {problem.title} (ID: {problem.id})')
             return problem
-        
-    # Fallback if no problems are available
+
+    # Fallback if no problems are available (either due or unsolved)
     print(f'No problems available in category {category}')
-    return None
+    return None # Return None explicitly if no problem is found
 
 # Return a list of categories that are unlocked based on user progress
 def get_unlocked_categories(session: Session) -> List[str]:
