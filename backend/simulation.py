@@ -91,6 +91,66 @@ AGENT_PROFILES = {
         "2DDP": 0.35,
         "Bit Manipulation": 0.5,
         "Math": 0.6,
+    },
+    "Senior_Variant1": {
+        "Arrays and Hashing": 0.7,
+        "Two Pointers": 0.7,
+        "Stack": 0.65,
+        "Sliding Window": 0.65,
+        "Binary Search": 0.7,
+        "Linked List": 0.6,
+        "Tree": 0.6,
+        "Tries": 0.55,
+        "Heap / Priority Queue": 0.55,
+        "Backtracking": 0.2,  # Weak in Backtracking
+        "Intervals": 0.6,
+        "Greedy": 0.6,
+        "Graph": 0.2,  # Weak in Graph
+        "Graph2": 0.2,  # Weak in Graph2
+        "1DDP": 0.1,  # Weak in 1DDP
+        "2DDP": 0.35,
+        "Bit Manipulation": 0.5,
+        "Math": 0.6,
+    },
+    "Senior_Variant2": {
+        "Arrays and Hashing": 0.7,
+        "Two Pointers": 0.7,
+        "Stack": 0.65,
+        "Sliding Window": 0.2,  # Weak in Sliding Window
+        "Binary Search": 0.2,  # Weak in Binary Search
+        "Linked List": 0.6,
+        "Tree": 0.6,
+        "Tries": 0.15,  # Weak in Tries
+        "Heap / Priority Queue": 0.55,
+        "Backtracking": 0.6,
+        "Intervals": 0.6,
+        "Greedy": 0.6,
+        "Graph": 0.5,
+        "Graph2": 0.5,
+        "1DDP": 0.4,
+        "2DDP": 0.1,  # Weak in 2DDP
+        "Bit Manipulation": 0.5,
+        "Math": 0.6,
+    },
+    "Senior_Variant3": {
+        "Arrays and Hashing": 0.7,
+        "Two Pointers": 0.7,
+        "Stack": 0.65,
+        "Sliding Window": 0.65,
+        "Binary Search": 0.7,
+        "Linked List": 0.6,
+        "Tree": 0.15,  # Weak in Tree
+        "Tries": 0.55,
+        "Heap / Priority Queue": 0.15,  # Weak in Heap / Priority Queue
+        "Backtracking": 0.6,
+        "Intervals": 0.2,  # Weak in Intervals
+        "Greedy": 0.6,
+        "Graph": 0.5,
+        "Graph2": 0.5,
+        "1DDP": 0.4,
+        "2DDP": 0.35,
+        "Bit Manipulation": 0.2,  # Weak in Bit Manipulation
+        "Math": 0.6,
     }
 }
 
